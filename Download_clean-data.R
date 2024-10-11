@@ -8,7 +8,7 @@ install_and_load <- function(package) {
 }
 
 # List of required packages
-required_packages <- c("janitor","kableExtra","data.table", "tidyverse", "lubridate","ggplot2","readxl","corrplot","scales" ,"knitr","bookdown")
+required_packages <- c("janitor","kableExtra","gridExtra","data.table", "tidyverse", "lubridate","ggplot2","readxl","corrplot","scales" ,"knitr","bookdown")
 
 # Install and load all required packages
 for (pkg in required_packages) {
@@ -22,17 +22,15 @@ unzip(temp, files = "SPCPS_Analyse_Men_Togo241007.xlsx", exdir = "data")
 spcps_data <- read_excel("data/SPCPS_Analyse_Men_Togo241007.xlsx")
 # Supprimer les colonnes entièrement vides
 spcps_data1 <- spcps_data %>% select(where(~ any(!is.na(.))))
-x <- colnames(spcps_data1)
-print(x)
 
-str(spcps_data)
-dim(spcps_data)
+#str(spcps_data)
+#dim(spcps_data)
 
 
 # 1. Suppression des colonnes inutiles (métadonnées)
-dput(names(spcps_data1))
+#dput(names(spcps_data1))
 columns_to_remove <- c("_uuid", "_submission_time", "_status", "_submitted_by", "__version__",
-                       "_index","start-geopoint","_start-geopoint_latitude","_start-geopoint_longitude",
+                       "start-geopoint","_start-geopoint_latitude","_start-geopoint_longitude",
                        "_start-geopoint_precision","today","deviceid","audit","audit_URL",
                        "DM1_start","DM5_end","DM1_start_t","DM5_end_t","start_section_d","end_section_d","start_section_d_t",
                        "end_section_d_t","start_objective_1", "end_objective1", "start_objective_1_t", "end_objective_1_t",
@@ -44,7 +42,7 @@ columns_to_remove <- c("_uuid", "_submission_time", "_status", "_submitted_by", 
 spcps_data1 <- spcps_data1 %>% select(-all_of(columns_to_remove))
 
 
-dput(names(spcps_data1))
+#dput(names(spcps_data1))
 columns_to_remove2 <-c( 
   "Q7d. Selon vous, quelles sont les plus grandes menace à la cohésion sociale dans votre communauté ? /Litiges fonciers (Problème lié à la terre)", 
   "Q7d. Selon vous, quelles sont les plus grandes menace à la cohésion sociale dans votre communauté ? /Ressources communes partagées (eau, espace public, pâturage, etc.)", 
@@ -171,6 +169,24 @@ columns_to_remove2 <-c(
 
 spcps_data2 <- spcps_data1 %>% select(-all_of(columns_to_remove2))
 
+spcps_data2 <- spcps_data2 %>%rename("ID_enqeteur"="ID de l'enquêteur", 
+       "debut_entr"="Heure de début de l'entretien",
+       "fin_entr"="Heure de fin de l'entretien",
+       "ZD"="Grappe (ZD)",
+       "DM3_Autres"="Autres (Veuillez préciser)...29", 
+       "DM4_Autres"="Autres (Veuillez préciser)...31", 
+       "DM5_Autres"="Autres (Veuillez préciser)...33",
+       "Q5c_Autres"="Autres (Veuillez préciser)...62",
+       "Q7d_Autres"="Autres (Veuillez préciser)...83",
+       "Q8c_Autres"="Autres (Veuillez préciser)...94",
+       "Q8f_Autres"="Autres (veuillez préciser)...107", 
+       "Q10a_Autres"="Autres (veuillez préciser)...124",
+       "Q10g_Autres"="Autres (Veuillez préciser)...140",
+       "Q19d_Autre"="Autre personne ou organisation", 
+       "Q21a_Autres"="Autres (veuillez préciser)...254", 
+       "Q27a_Autres"="Autres (Veuillez préciser)...321" )
+
+
 # 2. Séparer les identifiants des libellés et stocker les libellés
 libelles <- list()  # Créer une liste pour stocker les libellés
 
@@ -178,7 +194,7 @@ libelles <- list()  # Créer une liste pour stocker les libellés
 for (col in colnames(spcps_data2)) {
   
   # Séparer l'identifiant et le libellé au niveau du point
-  split_name <- strsplit(col, "\\.", fixed = TRUE)[[1]]
+  split_name <- strsplit(col, " ", fixed = TRUE)[[1]]
   
   # Si le nom contient un point (i.e. deux éléments après split)
   if (length(split_name) > 1) {
@@ -196,57 +212,310 @@ for (col in colnames(spcps_data2)) {
   }
 }
 
-# 3. Renommer les colonnes "Autres (Veuillez préciser)" en ajoutant un suffixe basé sur la question précédente
-for (col in colnames(spcps_data2)) {
-  
-  # Vérifier si le nom de colonne contient "Autres (Veuillez préciser)"
-  if (grepl("Autres \\(Veuillez préciser\\)", col)) {
-    
-    # Identifier la question précédente (celle avant "Autres...")
-    # On suppose que la question précédente est celle avec un index juste avant
-    col_index <- which(colnames(spcps_data2) == col)
-    
-    if (col_index > 1) {  # Assurez-vous que ce n'est pas la première colonne
-      previous_question_id <- colnames(spcps_data2)[col_index - 1]
-      
-      # Renommer la colonne en ajoutant "_autre" à l'identifiant de la question précédente
-      new_col_name <- paste0(previous_question_id, "_autre")
-      colnames(spcps_data2)[col_index] <- new_col_name
-    }
-  }
-}
-
-
-d <- dput(names(spcps_data2))
-d[25]
-
-strsplit(d[10], " ", fixed = TRUE)[[1]]
-grepl("Autres \\(Veuillez préciser\\)", d[10])
-
-
-
-
 
 # 4. Enregistrer les libellés dans un fichier CSV pour une utilisation ultérieure
 libelles_df <- data.frame(identifiant = names(libelles), libelle = unlist(libelles), stringsAsFactors = FALSE)
-write.csv(libelles_df, "libelles_variables.csv", row.names = FALSE)
+write.csv(libelles_df, "data/libelles_variables.csv", row.names = FALSE)
 
 # 5. Optionnel: Enregistrer les données nettoyées dans un fichier CSV
-write.csv(data, "SPCPS_Analyse_Men_Togo_cleaned_recoded.csv", row.names = FALSE)
+write.csv(spcps_data2, "data/SPCPS_Analyse_Men_Togo_cleaned_recoded.csv", row.names = FALSE)
 
-# Vérifier les nouveaux noms de colonnes et les libellés
-head(colnames(data))
-head(libelles_df)
+#dput(names(spcps_data2))
+
+# Liste des colonnes à choix multiple (à adapter selon vos données)
+multiple_choice_columns <- c("Q7d.", "Q8c.","Q10a.","Q10g.","Q19c.","Q19d.","Q20a.","Q21a.","25a.","Q27a.")  # Remplacer par les noms de colonnes réelles
+
+# Définir une liste d'options possibles pour chaque colonne (ou utiliser la même liste pour toutes les colonnes)
+options_possibles <- list(
+  "Q7d."= c("Litiges fonciers (Problème lié à la terre)", 
+  "Ressources communes partagées (eau, espace public, pâturage, etc.)", 
+  "Divisions ethniques", 
+  "Divisions religieuses", 
+  "Facteurs économiques (pauvreté, chômage, etc.)", 
+  "Insécurité (présence de groupes d'autodéfense, usage excessif de la force par les forces de sécurité, présence de groupes armés)", 
+  "Violences sexuelles et sexistes", 
+  "Conflits politiques", 
+  "Insécurité alimentaire", 
+  "Conflit lié au pouvoir local/chefferie traditionnelle", 
+  "Autres (Veuillez préciser)", 
+  "Ne sait pas", 
+  "Préfère ne pas répondre"), 
+  "Q8c."=c("Leadership", 
+  "Coordination", 
+  "Soutien/Rôles sexospécifiques (Soutien différencier selon le sexe)", 
+  "Autres (Veuillez préciser)", 
+  "Ne sait pas", 
+  "Préfère ne pas répondre"), 
+  "Q8f."=c("Structure sociétale (dominance masculine, dynamique du pouvoir)", 
+  "Culture/Tradition", 
+  "Religion", 
+  "Situation économique", 
+  "Éducation", 
+  "Charge domestique", 
+  "Autres (veuillez préciser)", 
+  "Ne sait pas", 
+  "Préfère ne pas répondre"),
+  "Q10a."=c("Leader communautaire", 
+  "Chef religieux", 
+  "Membres du gouvernement", 
+  "Amis", 
+  "Membres de la famille", 
+  "Site d'actualités", 
+  "Journal", 
+  "Médias sociaux", 
+  "Radio", 
+  "Télévision", 
+  "Centre d'information communautaire", 
+  "Autres (veuillez préciser)", 
+  "Ne sait pas"), 
+  "Q10g."=c("Je suppose que ce que je lis/entends doit être vrai parce que c'est public.", 
+  "Tout ce qui se trouve sur Internet est exact.", 
+  "Je regarde la source pour voir si elle est fiable.", 
+  "Je demande à quelqu'un à qui j'ai confiance s'il pense que la nouvelle est vraie ou fausse.", 
+  "Je suis sceptique à propos de tout ce qui se trouve sur internet.", 
+  "La plupart des informations sont discutables.", 
+  "Autres (Veuillez préciser)", 
+  "Ne sait pas", 
+  "Préfère ne pas répondre"), 
+  "Q19c."=c("Je n’ai pas pu le résoudre moi-même.", 
+  "J’ai fait confiance aux autorités pour gérer le litige.", 
+  "Je pensais que le problème était trop grave pour être traité de manière informelle.", 
+  "Je voulais une résolution juridiquement contraignante.", 
+  "Il était nécessaire de suivre une procédure formelle.", 
+  "Je pensais que le problème n'était pas assez important pour une action formelle.", 
+  "J'étais convaincu que je pouvais facilement le résoudre moi-même.", 
+  "Je ne faisais pas confiance aux autorités formelles.", 
+  "C’était plus pratique ou moins coûteux.", 
+  "Certains aspects du litige nécessitaient une résolution formelle, d'autres non.", 
+  "Je voulais d'abord essayer de le résoudre de manière informelle avant de passer au formel.", 
+  "La situation est passée de l'informel au formel.", 
+  "Je n'étais pas sûr de la meilleure approche, alors j'ai utilisé les deux.", 
+  "Ne sait pas", 
+  "Préfère ne pas répondre"), 
+  "Q19d."=c("Aucune décision n'a été prise : le différend a été abandonné, ou a été résolu autrement", 
+  "Aucune décision n'a été prise, car l'affaire est toujours en cours", 
+  "Cour ou tribunal (avocat, parajuriste)", 
+  "Police (ou autres forces de l'ordre)", 
+  "Un bureau gouvernemental ou municipal ou une autre autorité ou organisme officiellement désigné.", 
+  "Chef ou autorité religieuse", 
+  "Leader ou autorité communautaire (comme l’ainé du village ou un dirigeant local)", 
+  "Autres plaintes officielles ou processus d'appel", 
+  "Autre aide externe, telle que la médiation, la conciliation, l'arbitrage", 
+  "Autre personne ou organisation", 
+  "Je n'ai consulté personne pour résoudre le problème", 
+  "Ne sait pas", 
+  "Préfère ne pas répondre"), 
+  "Q20a."=c("Système judiciaire de l'État", 
+  "Système de justice coutumier", 
+  "Système de justice religieux", 
+  "Autre (veuillez préciser)", 
+  "Personne", 
+  "Ne sait pas", 
+  "Préfère ne pas répondre"),
+  "Q21a."=c("Police", 
+  "Armée", 
+  "Agent des services frontaliers ou de l'immigration", 
+  "Gendarmerie", 
+  "Groupes communautaires d'autodéfense", 
+  "Groupes armés", 
+  "Autres (veuillez préciser)", 
+  "Ne sait pas", 
+  "Préfère ne pas répondre"), 
+  "25a."=c("Fonctionnaires municipaux ou provinciaux/départementaux", 
+  "Représentants élus des communautés locales aux niveaux provincial, communal, cantonal, etc.", 
+  "Représentants élus du gouvernement national ou fédéral", 
+  "Agents de la sécurité sociale ou   des services sociaux", 
+  "Enseignants, professeurs dans les écoles publiques ou les universités", 
+  "Médecins, infirmières ou autres responsables de la santé d'une clinique ou d'un hôpital public (Agents de sante)", 
+  "Agents de police", 
+  "Procureurs, juges ou magistrats", 
+  "Agents des impôts ou du trésor", 
+  "Douaniers", 
+  "Agents ou inspecteurs des services publics (électricité, eau, assainissement, etc.)", 
+  "Fonctionnaires du service des passeports", 
+  "Personnel du service d'immatriculation des véhicules ou de délivrance des permis de conduire (Les services du transport)", 
+  "Les agents des forces armées", 
+  "Agents des services du domaine et du foncier", 
+  "Autres", 
+  "Aucune de ces réponses", 
+  "Préfère ne pas répondre"), 
+  "Q27a."=c("Boko Haram", 
+  "Mouvement pour le Salut de l'Azawad", 
+  "Jama'at Nasr al-Islam wal Muslimin", 
+  "Al-Qaïda au Maghreb islamique", 
+  "Ansar al-Dine", 
+  "Katiba Macina", 
+  "Autres (Veuillez préciser)", 
+  "Ne connais aucun groupe", 
+  "Préfère ne pas répondre...319", 
+  "Préfère ne pas répondre...320")
+)
+
+# Fonction pour traiter chaque variable à choix multiple
+process_multiple_choice_column <- function(data, column, options_list) {
+  data_long <- data %>%
+    rowwise() %>%
+    mutate(option_detected = list(str_extract_all({{ column }}, paste(options_list, collapse = "|"))[[1]])) %>%
+    unnest(option_detected)
+  
+  return(data_long)
+}
+
+# Appliquer cette fonction à chaque colonne à choix multiple et combiner les résultats
+all_choices <- list()
+for (col in multiple_choice_columns) {
+  temp_data <- process_multiple_choice_column(spcps_data2, !!sym(col), options_possibles[[col]])
+  temp_data <- temp_data %>% mutate(variable = col)  # Ajouter une colonne pour identifier la variable
+  all_choices[[col]] <- temp_data
+}
+
+# Combiner tous les résultats dans un tableau unique
+combined_data <- bind_rows(all_choices)
+
+#########################################################
+#Option A variable à choix multiple
+##################################
+
+# Fonction pour générer un bar plot et un tableau pour chaque variable à choix multiple
+plot_and_table_multiple_choice <- function(data, variable) {
+  
+  # Filtrer les données pour la variable spécifiée
+  data_filtered <- data %>% filter(variable == !!variable)
+  
+  # Calculer la fréquence des options pour cette variable
+  freq_table <- data_filtered %>%
+    group_by(option_detected) %>%
+    summarise(Frequence = n()) %>%
+    arrange(desc(Frequence))
+  
+  # Créer un graphique de fréquence (bar plot)
+  p <- ggplot(freq_table, aes(x = reorder(option_detected, Frequence), y = Frequence, fill = option_detected)) +
+    geom_bar(stat = "identity", color = "black") +
+    coord_flip() +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(title = paste("Distribution de", variable), x = "Option", y = "Fréquence")
+  
+  # Afficher le graphique et le tableau côte à côte
+  gridExtra::grid.arrange(
+    p,
+    tableGrob(freq_table),
+    ncol = 1
+  )
+}
+
+# Appliquer cette fonction à chaque variable à choix multiple
+for (col in multiple_choice_columns) {
+  cat(paste("\n### Visualisation pour la variable:", col, "\n\n"))
+  plot_and_table_multiple_choice(combined_data, col)
+}
+
+
+#########################################################
+#Option B variable à choix multiple
+##################################
+
+# Fonction pour générer un bar plot et un tableau pour chaque variable à choix multiple
+plot_and_table_multiple_choice <- function(data, variable) {
+  
+  # Filtrer les données pour la variable spécifiée et retirer les NA
+  data_filtered <- data %>% filter(variable == !!variable & !is.na(option_detected))
+  
+  # Calculer la fréquence et les pourcentages des options pour cette variable
+  total_count <- nrow(data_filtered)
+  freq_table <- data_filtered %>%
+    group_by(option_detected) %>%
+    summarise(Frequence = n()) %>%
+    arrange(desc(Frequence)) %>%
+    mutate(Pourcentage = round((Frequence / total_count) * 100, 2))  # Calcul du pourcentage
+  
+  # Créer un graphique de fréquence (bar plot) avec pourcentage sur les barres
+  p <- ggplot(freq_table, aes(x = reorder(option_detected, Frequence), y = Frequence, fill = option_detected)) +
+    geom_bar(stat = "identity", color = "black") +
+    geom_text(aes(label = paste0(Pourcentage, "%")), hjust = -0.3, size = 3.5) +  # Ajout du pourcentage
+    coord_flip() +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(title = paste("Distribution de", variable), x = "Option", y = "Fréquence") +
+    ylim(0, max(freq_table$Frequence) * 1.2)  # Ajouter un peu d'espace pour afficher les labels
+  
+  # Créer un tableau de fréquence avec une colonne pourcentage
+  table_with_percent <- freq_table %>%
+    select(Option = option_detected, Frequence, Pourcentage)
+  
+  # Afficher le graphique et le tableau côte à côte
+  gridExtra::grid.arrange(
+    p,
+    tableGrob(table_with_percent),
+    ncol = 1
+  )
+}
+
+# Appliquer cette fonction à chaque variable à choix multiple
+for (col in multiple_choice_columns) {
+  cat(paste("\n### Visualisation pour la variable:", col, "\n\n"))
+  plot_and_table_multiple_choice(combined_data, col)
+}
+
+
+#########################################################
+#Option A variable catégorielle
+##################################
+
+
+
+
+# Fonction pour générer un bar plot et un tableau pour une variable catégorielle
+plot_and_table_categorical <- function(data, variable) {
+  
+  # Filtrer les données pour la variable spécifiée et retirer les NA
+  data_filtered <- data %>% filter(!is.na({{ variable }}))
+  
+  # Calculer la fréquence et les pourcentages des catégories pour cette variable
+  total_count <- nrow(data_filtered)
+  freq_table <- data_filtered %>%
+    group_by({{ variable }}) %>%
+    summarise(Frequence = n()) %>%
+    arrange(desc(Frequence)) %>%
+    mutate(Pourcentage = round((Frequence / total_count) * 100, 2))  # Calcul du pourcentage
+  
+  # Créer un graphique de fréquence (bar plot) avec pourcentage sur les barres
+  p <- ggplot(freq_table, aes(x = reorder({{ variable }}, Frequence), y = Frequence, fill = {{ variable }})) +
+    geom_bar(stat = "identity", color = "black") +
+    geom_text(aes(label = paste0(Pourcentage, "%")), hjust = -0.3, size = 3.5) +  # Ajout du pourcentage
+    coord_flip() +
+    theme_minimal() +
+    theme(legend.position = "none") +
+    labs(title = paste("Distribution de", deparse(substitute(variable))), x = "Catégorie", y = "Fréquence") +
+    ylim(0, max(freq_table$Frequence) * 1.2)  # Ajouter un peu d'espace pour afficher les labels
+  
+  # Créer un tableau de fréquence avec une colonne pourcentage
+  table_with_percent <- freq_table %>%
+    select(Catégorie = {{ variable }}, Frequence, Pourcentage)
+  
+  # Afficher le graphique et le tableau côte à côte
+  gridExtra::grid.arrange(
+    p,
+    tableGrob(table_with_percent),
+    ncol = 2
+  )
+}
+
+# Identifier les variables catégorielles qui ne sont pas à choix multiple
+# Supposons que toutes les variables autres que celles à choix multiple sont catégorielles
+categorical_columns <- setdiff(names(data), multiple_choice_columns)
+
+# Appliquer cette fonction à chaque variable catégorielle
+for (col in categorical_columns) {
+  cat(paste("\n### Visualisation pour la variable catégorielle :", col, "\n\n"))
+  plot_and_table_categorical(data, !!sym(col))
+}
 
 
 
 
 
 
-# Step 2: Data Cleaning
-
-nyc_data <- nyc_data %>%select(-c(`BUILDING CLASS AT PRESENT`, `ZIP CODE`, ADDRESS, 
-                                  `APARTMENT NUMBER`,`SALE DATE`, V1, `EASE-MENT`))
 
 
 
@@ -258,63 +527,27 @@ nyc_data <- nyc_data %>%select(-c(`BUILDING CLASS AT PRESENT`, `ZIP CODE`, ADDRE
 
 
 
-nyc_data <- nyc_data %>%
-  mutate(`RESIDENTIAL UNITS` = as.numeric(gsub(",|-", "", `RESIDENTIAL UNITS`)),
-         `COMMERCIAL UNITS` = as.numeric(gsub(",|-", "", `COMMERCIAL UNITS`)),
-         `TOTAL UNITS` = as.numeric(gsub(",|-", "", `TOTAL UNITS`)),
-         `LAND SQUARE FEET` = as.numeric(gsub(",|-", "", `LAND SQUARE FEET`)),
-         `GROSS SQUARE FEET` = as.numeric(gsub(",|-", "", `GROSS SQUARE FEET`)),
-         `SALE PRICE` = as.numeric(gsub(",|-", "", `SALE PRICE`)),
-         BLOCK = as.numeric(gsub(",|-", "", BLOCK)),
-         `YEAR BUILT` = as.numeric(gsub(",|-", "", `YEAR BUILT`)),
-         LOT = as.numeric(gsub(",|-", "", LOT)),
-         `SALE DATE` = as.Date(`SALE DATE`, format = "%m/%d/%Y"),
-         sale_year = year(`SALE DATE`),
-         sale_month = month(`SALE DATE`, label = TRUE),
-         building_age = year(`SALE DATE`) - `YEAR BUILT`,
-         BOROUGH = as.factor(c('1' = 'Manhattan', '2' = 'Bronx', '3' = 'Brooklyn', 
-                               '4' = 'Queens', '5' = 'Staten Island')[BOROUGH]),
-         across(c("BOROUGH", "NEIGHBORHOOD", "BUILDING CLASS CATEGORY", 
-                  "TAX CLASS AT PRESENT", "BUILDING CLASS AT TIME OF SALE", 
-                  "TAX CLASS AT TIME OF SALE"), as.factor)) %>%
-  select(-c(`BUILDING CLASS AT PRESENT`, `ZIP CODE`, ADDRESS, `APARTMENT NUMBER`,`SALE DATE`, V1, `EASE-MENT`))
-
-# Default correlations before any cleaning
-corr_default2 <- nyc_data %>%
-  select(where(is.numeric)) %>%  
-  cor(use = "complete.obs")
-
-
-nyc_data2<- nyc_data%>%
-  select(c(`BOROUGH`, `BUILDING CLASS CATEGORY`,`BLOCK`, LOT, `TOTAL UNITS`,`LAND SQUARE FEET`, `GROSS SQUARE FEET`, `SALE PRICE`, building_age))
-kable(
-  head(nyc_data2,10), booktabs = TRUE, caption = "first lines of some relevant columns of data")%>%
-  kable_styling(latex_options = c("HOLD_position","scale_down"))
 
 
 
-#-------------------------------------------Handle  missing values------------------------
-# Remove rows where sale price is missing or zero
-nyc_data <- nyc_data %>%
-  filter(`SALE PRICE` >100)%>%
-  mutate(building_age = ifelse(building_age < 0 | is.na(building_age), NA, building_age))
 
-# Replace empty values with NA
-nyc_data2 <- nyc_data%>%
-  mutate(across(where(is.factor), as.character)) %>%
-  mutate(across(where(is.character), ~na_if(.x, "")))
 
-# Calculate the missing value rate for each column
-na_rate2 <- nyc_data2 %>%
-  summarise(across(everything(), ~mean(is.na(.)) * 100))%>%t()
-colnames(na_rate2) <- "NA_Percentage"
-na_rate2 <- as.data.frame(na_rate2)
-kable(na_rate2, booktabs = TRUE, caption = "Percentage of missing values by variable.")%>%
-  kable_styling(latex_options = c("HOLD_position","scale_down"))
 
-# Drop rows with any missing values (NA) and Remove duplicate rows
-nyc_data <- nyc_data %>%
-  drop_na() %>%
-  distinct() %>%
-  filter(`COMMERCIAL UNITS` + `RESIDENTIAL UNITS` == `TOTAL UNITS`) %>%
-  filter(`TOTAL UNITS` != 0 &`YEAR BUILT` != 0 & `LAND SQUARE FEET` != 0 & `GROSS SQUARE FEET` != 0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
