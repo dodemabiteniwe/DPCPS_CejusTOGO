@@ -1,0 +1,140 @@
+---
+title: Stratégie américaine pour Prévention des Conflits et la promotion de la Stabilité
+  (SPCPS) dans les pays de l’Afrique de l'Ouest côtière (CWA) –  Analyse de référence
+author: "CEJUS TOGO"
+date: "2025-01-03"
+output:
+  bookdown::word_document2:
+    toc: true
+    extra_dependencies: ["float"]
+link-citations: true
+linkcolor: blue
+urlcolor: red
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+\newpage
+
+```{r dataset, echo=FALSE}
+# Load the necessary library and dataset
+# Load the necessary library and dataset
+# Function to install and load a single package
+install_and_load <- function(package) {
+  if (!require(package,character.only = TRUE)) {
+    install.packages(package, dependencies = TRUE)
+    library(package,character.only = TRUE)
+  }
+}
+
+# List of required packages
+required_packages <- c("janitor","kableExtra","gridExtra","data.table", "tidyverse", "lubridate","ggplot2","readxl","corrplot","scales" ,"knitr","bookdown","gtsummary")
+
+# Install and load all required packages
+for (pkg in required_packages) {
+  install_and_load(pkg)
+}
+
+load("..//rdas//spcps.rda")
+str(spcps.rda)
+```
+
+
+# Résumé Exécutif
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+
+# Introduction 
+
+# Méthodologies
+
+## Caractéristiques socio-démographiques de l’échantillon pour les données quantitatives 
+
+### Répartition des enquêtés suivant la tranche d’âge et le sexe
+
+```{r dm1et2, cache=TRUE, tab.cap="Echantillon suivant la tranche d’âge et le sexe"}
+spcpsT_data%>%tbl_cross(row = DM2., col = DM1., statistic = "{p}%", percent = "column",digits = 1)%>%add_p(source_note = TRUE)%>%bold_labels()%>%as_gt() |>
+  gt::tab_source_note(gt::md("**Table 1. Echantillon suivant la tranche d’âge et le sexe**"))
+```
+
+Les résultats montrent une légère dominance des femmes dans les tranches d'âge jeunes (18-25 ans : 53.7%, 26-35 ans : 51.7%), tandis que les hommes sont majoritaires dans les tranches d'âge plus élevées (46-55 ans : 67.1%, 56+ ans : 77.4%). Ces résultats sont cohérents avec les tendances nationales montrant une population féminine jeune plus importante
+
+
+### Echantillon définitif suivant le niveau d'étude, la religion d'appartenance et la région de provenance des enquêtés
+
+```{r dm1et3, cache=TRUE}
+tbl2 <- spcpsT_data %>%
+ tbl_summary(
+ include = c(DM3., DM4.),
+ by = Adm2.,
+ label = list(DM3.= "Level of Education", DM4.="Religion"),
+ statistic = all_categorical() ~ "{p}%",
+ digits = list(all_categorical() ~ c(1, 1)),
+ sort = all_categorical(FALSE) ~ "frequency"
+ ) %>%
+ add_overall(last = TRUE) %>%
+ add_p()%>%
+ bold_labels() %>%
+ italicize_levels()
+
+tbl2%>%
+ modify_header(
+ list(label ~ "**Variable**",
+      all_stat_cols(stat_0 = FALSE) ~ "_{level}_ (n={n}, {style_percent(p)}%)",
+ stat_0 ~ "**TOTAL** (n={N})")
+ ) %>%
+ modify_spanning_header(all_stat_cols() ~ "**Traitement**")
+```
+
+
+
+### Echantillon définitif suivant e groupe ethnique et la région de provenance des enquêtés
+
+```{r dm1et4, cache=TRUE}
+tbl3 <- spcpsT_data%>%
+ tbl_summary(
+ include = c(DM5.),
+ by = Adm2.,
+ label = list(DM5.= "Ethnicity"),
+ statistic = all_categorical() ~ "{p}%",
+ digits = list(all_categorical() ~ c(1, 1)),
+ sort = all_categorical(FALSE) ~ "frequency"
+ ) %>%
+ add_overall(last = TRUE) %>%
+ bold_labels() %>%
+ italicize_levels()
+
+tbl3%>%
+ modify_header(
+ list(label ~ "**Variable**",
+      all_stat_cols(stat_0 = FALSE) ~ "_{level}_ (n={n}, {style_percent(p)}%)",
+ stat_0 ~ "**TOTAL** (n={N})"
+ )
+ ) %>%
+ modify_spanning_header(all_stat_cols() ~ "**Traitement**")
+```
+
+
+
+
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
